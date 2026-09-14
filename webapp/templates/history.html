@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OSSINT Search History</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="topbar">
+  <a class="brand" href="/">OSSINT</a>
+  <nav class="actions">
+    <a class="btn" href="/">New search</a>
+  </nav>
+</div>
+<main class="container">
+  <header class="report-header">
+    <h1>Search history</h1>
+    <p class="muted">{{ items|length }} saved search{% if items|length != 1 %}es{% endif %}</p>
+  </header>
+
+  {% if items %}
+  <section class="card">
+    <table>
+      <thead><tr><th>Seed</th><th>Run at</th><th>Findings</th><th></th></tr></thead>
+      <tbody>
+      {% for it in items %}
+        <tr>
+          <td><code>{{ it.seed }}</code></td>
+          <td class="muted">{{ it.when }}</td>
+          <td>{{ it.total }}</td>
+          <td>
+            <a href="/report/{{ it.id }}">open</a> &middot;
+            <a href="/report/{{ it.id }}/pdf">pdf</a> &middot;
+            <a href="/report/{{ it.id }}/gml">gml</a>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </section>
+  {% else %}
+  <p class="muted">No searches yet. <a href="/">Run one</a>.</p>
+  {% endif %}
+
+  <footer class="muted">For authorized investigations only.</footer>
+</main>
+</body>
+</html>

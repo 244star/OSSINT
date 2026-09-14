@@ -1,0 +1,17 @@
+# Core — required for the base pipeline (orchestrator, native sources, reporting).
+httpx[http2]==0.28.1
+phonenumbers==9.0.39
+networkx==2.8.8
+python-dotenv==1.2.3
+
+# Optional — only needed if you use the corresponding source.
+# Comment out what you don't need. socialscan/telethon aren't pinned here —
+# they weren't in the captured environment, so check PyPI for current versions
+# before installing.
+maigret==0.6.5   # sources/wrappers.py : MaigretSource (username sweep)
+socialscan       # sources/wrappers.py : SocialscanSource (email/username availability)
+telethon         # sources/telegram_phone.py : TelegramPhoneSource
+
+# Dev / testing
+pytest==8.3.3
+pytest-asyncio==0.24.0

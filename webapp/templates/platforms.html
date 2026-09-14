@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OSSINT Platform Search</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="topbar">
+  <a class="brand" href="/">OSSINT</a>
+  <nav class="actions"><a class="btn" href="/history">History</a></nav>
+</div>
+<main class="container">
+  <header class="report-header">
+    <h1>Platform search</h1>
+    <p class="muted">Search one publicly indexed platform at a time.</p>
+  </header>
+
+  <form method="post" action="/search">
+    <section class="platform-controls card">
+      <label for="platform-query">Name, username, email, or phone</label>
+      <input id="platform-query" type="text" name="q" placeholder="e.g. Jane Doe or jane_doe" autofocus required>
+      <label for="platform-type">Search as</label>
+      <select id="platform-type" name="search_type">
+        <option value="auto">Detect automatically</option>
+        <option value="name">Full name</option>
+        <option value="username">Username</option>
+        <option value="email">Email address</option>
+        <option value="phone">Phone number</option>
+      </select>
+    </section>
+    <section class="platform-grid" aria-label="Choose platform">
+      {% for domain, label in platforms.items() %}
+      <button class="platform-button" type="submit" name="platform" value="{{ domain }}">
+        <span>{{ label }}</span><small>{{ domain }}</small>
+      </button>
+      {% endfor %}
+    </section>
+  </form>
+  <p class="muted platform-note">Results only include pages that are public and indexed by search engines. A result is not proof of identity.</p>
+  <footer class="muted">For authorized investigations only.</footer>
+</main>
+</body>
+</html>

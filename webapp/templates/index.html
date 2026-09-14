@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OSSINT People Search</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="topbar">
+  <a class="brand" href="/">OSSINT</a>
+  <nav class="actions">
+    <a class="btn" href="/platforms">Platforms</a>
+    <a class="btn" href="/history">History</a>
+  </nav>
+</div>
+<main class="container">
+  <header class="hero">
+    <h1>OSSINT</h1>
+    <p class="tagline">Find every public trace of a name, email, phone number or username.</p>
+  </header>
+  <form class="search-box universal-search" method="post" action="/search">
+    <input type="text" name="q" placeholder='e.g. "jane.doe@gmail.com", "+1 415 555 0123", "Jane Doe", "jdoe"' autofocus required>
+    <input type="hidden" name="search_type" value="auto">
+    <button type="submit">Search</button>
+  </form>
+  <p class="search-help muted">Or choose exactly what you want to search.</p>
+
+  <section class="search-grid" aria-label="Type-specific searches">
+    <form class="search-card" method="post" action="/search">
+      <input type="hidden" name="search_type" value="email">
+      <label for="email">Email address</label>
+      <input id="email" type="email" name="q" placeholder="name@example.com" required>
+      <button type="submit">Search email</button>
+    </form>
+    <form class="search-card" method="post" action="/search">
+      <input type="hidden" name="search_type" value="phone">
+      <label for="phone">Phone number</label>
+      <input id="phone" type="tel" name="q" placeholder="+1 415 555 0123" required>
+      <button type="submit">Search phone</button>
+    </form>
+    <form class="search-card" method="post" action="/search">
+      <input type="hidden" name="search_type" value="username">
+      <label for="username">Username</label>
+      <input id="username" type="text" name="q" placeholder="jane_doe" required>
+      <button type="submit">Search username</button>
+    </form>
+    <form class="search-card" method="post" action="/search">
+      <input type="hidden" name="search_type" value="name">
+      <label for="name">Full name</label>
+      <input id="name" type="text" name="q" placeholder="Jane Doe" required>
+      <button type="submit">Search name</button>
+    </form>
+  </section>
+  <details class="opt">
+    <summary>Optional: route live lookups through a proxy</summary>
+    <p class="muted small">Set <code>OSSINT_PROXY</code> before starting the app. This is applied to all searches.</p>
+  </details>
+  {% if recent %}
+  <section class="card">
+    <h2>Recent searches</h2>
+    <ul class="recent">
+      {% for r in recent %}
+      <li><a href="/report/{{ r.id }}">{{ r.seed }}</a> <span class="muted">{{ r.when }}</span></li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+  <footer class="muted">For authorized investigations only.</footer>
+</main>
+</body>
+</html>

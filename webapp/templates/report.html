@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OSSINT Report - {{ seed }}</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="topbar no-print">
+  <a class="brand" href="/">OSSINT</a>
+  <div class="actions">
+    <a class="btn" href="/history">History</a>
+    <button onclick="window.print()">&#128424; Print / Save as PDF</button>
+    <a class="btn" href="/report/{{ id }}/pdf">&#11015; Download PDF</a>
+    <a class="btn" href="/report/{{ id }}/gml">&#11015; Graph (GML)</a>
+  </div>
+</div>
+
+<main class="container report">
+  <header class="report-header">
+    <h1>OSSINT Report</h1>
+    <p class="seed">Seed: <code>{{ seed }}</code></p>
+    <p class="muted">Generated {{ when }} &#183; {{ total }} finding{% if total != 1 %}s{% endif %}</p>
+  </header>
+
+  {% for type, items in groups.items() %}
+  <section class="card">
+    <h2>{{ type|upper }} ({{ items|length }})</h2>
+    <table>
+      <thead><tr><th>Identifier</th><th>Corroboration</th></tr></thead>
+      <tbody>
+      {% for it in items %}
+        <tr><td><code>{{ it.value }}</code></td><td>{{ it.score }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </section>
+  {% endfor %}
+
+  <section class="card">
+    <h2>Findings</h2>
+    {% if findings %}
+    <table>
+      <thead>
+        <tr><th>Identifier</th><th>Source</th><th>Confidence</th><th>Link</th><th>Evidence</th></tr>
+      </thead>
+      <tbody>
+      {% for f in findings %}
+        <tr>
+          <td><code>{{ f.identifier }}</code></td>
+          <td>{{ f.source }}</td>
+          <td><span class="badge conf-{{ f.confidence }}">{{ f.confidence }}</span></td>
+          <td>{% if f.url %}<a href="{{ f.url }}" target="_blank" rel="noopener">open</a>{% else %}&mdash;{% endif %}</td>
+          <td class="evidence">
+            {% if f.details_summary %}<div class="muted">{{ f.details_summary }}</div>{% endif %}
+            {% if f.details %}<details><summary>View source data</summary><pre>{{ f.details | tojson(indent=2) }}</pre></details>{% else %}<span class="muted">&mdash;</span>{% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="muted">No findings for this identifier. Try a different input, or add more sources (HIBP_API_KEY, SERPER_API_KEY, maigret).</p>
+    {% endif %}
+  </section>
+
+  {% if pivots %}
+  <section class="card">
+    <h2>Pivots (co-occurrences)</h2>
+    <ul class="pivots">
+    {% for p in pivots %}
+      <li><code>{{ p.from }}</code> &#8594; <code>{{ p.to }}</code> <span class="muted">(weight {{ p.weight }})</span></li>
+    {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+
+  <footer class="muted no-print">For authorized investigations only.</footer>
+</main>
+</body>
+</html>
