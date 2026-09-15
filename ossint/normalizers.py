@@ -39,7 +39,7 @@ def username_candidates(name: str) -> list:
     cands = {
         first + last, first + "." + last, first + "-" + last,
         first[0] + last, first[0] + "." + last, first + "_" + last,
-        last + first, last + "." + last, first, last,
+        last + first, last + "." + first, first, last,
     }
     return sorted(c for c in cands if len(c) >= 3)
 

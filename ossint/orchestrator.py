@@ -21,6 +21,8 @@ ACTIVE_SOURCES = REGISTRY + [MaigretSource(), SocialscanSource(),
                              HibpSource()]
 
 UA = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) ossint/0.1"}
+MAX_DEPTH = 4
+MAX_CONCURRENT_QUERIES = 20
 
 
 def expand(identifier: Identifier) -> list:
@@ -34,9 +36,13 @@ class Orchestrator:
     def __init__(self, max_depth: int = 2, proxy: str | None = None,
                  platform: str | None = None, include_sources: set[str] | None = None,
                  exclude_sources: set[str] | None = None):
+        if not 0 <= max_depth <= MAX_DEPTH:
+            raise ValueError(f"max_depth must be between 0 and {MAX_DEPTH}")
         self.graph = CorrelationGraph()
         self.seen: set = set()
         self.max_depth = max_depth
+        self._query_limit = asyncio.Semaphore(MAX_CONCURRENT_QUERIES)
+        self.source_stats: dict[str, dict[str, int]] = {}
         # A platform page uses a dedicated site-restricted Serper source while
         # preserving the other public and optional sources.
         sources = (REGISTRY + [MaigretSource(), SocialscanSource(),
@@ -90,7 +96,7 @@ class Orchestrator:
         for i in fresh:
             for s in self.sources:
                 if s.enabled and i.type in s.handles:
-                    tasks.append(asyncio.create_task(s.safe_query(i, client)))
+                    tasks.append(asyncio.create_task(self._query(s, i, client)))
 
         next_wave: list = []
         if tasks:
@@ -101,3 +107,16 @@ class Orchestrator:
                     next_wave.extend(f.pivots)
         next_wave += [p for i in fresh for p in expand(i)]
         await self._wave(next_wave, depth + 1, client)
+
+    async def _query(self, source, identifier, client):
+        async with self._query_limit:
+            findings, status, error = await source.safe_query_with_status(identifier, client)
+        stats = self.source_stats.setdefault(
+            source.name, {"queries": 0, "findings": 0, "cached": 0,
+                          "failed": 0, "errors": {}})
+        stats["queries"] += 1
+        stats["findings"] += len(findings)
+        stats[status] = stats.get(status, 0) + 1
+        if error:
+            stats["errors"][error] = stats["errors"].get(error, 0) + 1
+        return findings

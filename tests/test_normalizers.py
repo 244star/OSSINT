@@ -66,6 +66,7 @@ class TestUsernameCandidates:
         cands = username_candidates("John Doe")
         assert "johndoe" in cands
         assert "john.doe" in cands
+        assert "doe.john" in cands
         assert "jdoe" in cands
 
     def test_empty_name_returns_empty(self):

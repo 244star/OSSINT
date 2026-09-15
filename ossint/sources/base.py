@@ -39,6 +39,11 @@ class Source(abc.ABC):
         return f"{self.name}:{identifier.key()}"
 
     async def safe_query(self, identifier: Identifier, client: httpx.AsyncClient) -> list:
+        findings, _, _ = await self.safe_query_with_status(identifier, client)
+        return findings
+
+    async def safe_query_with_status(
+            self, identifier: Identifier, client: httpx.AsyncClient) -> tuple[list, str, str | None]:
         """Never let one dead source kill the pipeline (module-rot defense).
 
         Also handles result caching and retries on transient (network/timeout)
@@ -49,7 +54,7 @@ class Source(abc.ABC):
         cached = get_cache().get(key, self.cache_ttl)
         if cached is not None:
             log.debug("[%s] cache hit for %s", self.name, identifier)
-            return [Finding.from_dict(d) for d in cached]
+            return [Finding.from_dict(d) for d in cached], "cached", None
 
         attempt = 0
         while True:
@@ -57,12 +62,12 @@ class Source(abc.ABC):
                 await self.rate_limit()
                 findings = await asyncio.wait_for(self.query(identifier, client), timeout=30)
                 get_cache().set(key, [f.to_dict() for f in findings])
-                return findings
+                return findings, "success", None
             except RETRYABLE as exc:
                 if attempt >= self.max_retries:
                     log.warning("[%s] giving up on %s after %d attempts: %s",
                                 self.name, identifier, attempt + 1, exc)
-                    return []
+                    return [], "failed", type(exc).__name__
                 delay = self.retry_backoff * (2 ** attempt)
                 log.info("[%s] retryable error on %s (%s), retrying in %.1fs",
                          self.name, identifier, exc, delay)
@@ -72,4 +77,4 @@ class Source(abc.ABC):
                 # Non-transient (bad JSON, bug, unexpected shape, etc.) — don't
                 # retry, just log and move on so one source can't stall a run.
                 log.warning("[%s] failed on %s: %s", self.name, identifier, exc)
-                return []
+                return [], "failed", type(exc).__name__

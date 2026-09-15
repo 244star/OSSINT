@@ -32,10 +32,14 @@ class CorrelationGraph:
                 self.g.add_edge(ident_key, pkey, kind="co-occurrence", weight=1)
 
     def score(self, key: str) -> int:
-        """Corroboration = sum of edge weights (multiple independent hits = strong)."""
+        """Corroboration = number of distinct sources observing the identifier."""
         if key not in self.g:
             return 0
-        return sum(d.get("weight", 1) for _, _, d in self.g.edges(key, data=True))
+        return sum(
+            1 for neighbor, data in self.g[key].items()
+            if data.get("kind") == "observed_in"
+            and self.g.nodes[neighbor].get("label") == "source"
+        )
 
     def save(self, path: str) -> None:
         nx.write_gml(self.g, path)

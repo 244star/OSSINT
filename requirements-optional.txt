@@ -1,0 +1,4 @@
+# Optional source integrations. Install only the integrations you use.
+maigret==0.6.5
+socialscan
+telethon

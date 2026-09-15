@@ -13,6 +13,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import tempfile
 import time
 from pathlib import Path
 from threading import Lock
@@ -44,10 +45,24 @@ class Cache:
     def _flush(self) -> None:
         if self._disabled:
             return
+        temporary_path = None
         try:
-            self.path.write_text(json.dumps(self._data))
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            with tempfile.NamedTemporaryFile(
+                    mode="w", encoding="utf-8", dir=self.path.parent,
+                    prefix=f".{self.path.name}.", suffix=".tmp", delete=False) as handle:
+                temporary_path = Path(handle.name)
+                json.dump(self._data, handle)
+                handle.flush()
+                os.fsync(handle.fileno())
+            os.replace(temporary_path, self.path)
         except OSError as exc:
             log.warning("cache: failed to write %s (%s)", self.path, exc)
+            if temporary_path is not None:
+                try:
+                    temporary_path.unlink(missing_ok=True)
+                except OSError:
+                    log.debug("cache: failed to remove temporary file %s", temporary_path)
 
     def get(self, key: str, ttl: float) -> list | None:
         """Return cached findings (as plain dicts) if present and fresh, else None."""

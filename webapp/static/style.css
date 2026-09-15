@@ -70,3 +70,6 @@ footer { text-align: center; padding: 20px 0; }
   .topbar { padding: 10px 14px; }
   .actions { flex-wrap: wrap; justify-content: flex-end; }
 }
+.inline-form {
+  display: inline;
+}

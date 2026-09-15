@@ -33,6 +33,10 @@
             <a href="/report/{{ it.id }}">open</a> &middot;
             <a href="/report/{{ it.id }}/pdf">pdf</a> &middot;
             <a href="/report/{{ it.id }}/gml">gml</a>
+            <form class="inline-form" method="post" action="/report/{{ it.id }}/delete"
+                  onsubmit="return confirm('Delete this report?');">
+              <button type="submit">delete</button>
+            </form>
           </td>
         </tr>
       {% endfor %}

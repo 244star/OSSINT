@@ -14,9 +14,8 @@ class TestClassifyName:
         assert classify(1, 1, IdentifierType.NAME.value) == Confidence.LIKELY
         assert classify(2, 2, IdentifierType.NAME.value) == Confidence.LIKELY
 
-    def test_zero_findings_still_likely_for_name(self):
-        # note: current implementation doesn't special-case 0 findings for names
-        assert classify(0, 0, IdentifierType.NAME.value) == Confidence.LIKELY
+    def test_zero_findings_are_unsure_for_name(self):
+        assert classify(0, 0, IdentifierType.NAME.value) == Confidence.UNSURE
 
 
 class TestClassifyOtherTypes:

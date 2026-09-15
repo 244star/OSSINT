@@ -7,7 +7,7 @@ from pathlib import Path
 
 from .models import Identifier, IdentifierType
 from .normalizers import looks_like_domain, normalize_domain, normalize_email, normalize_phone
-from .orchestrator import Orchestrator
+from .orchestrator import MAX_DEPTH, Orchestrator
 from .reporting import render_markdown
 
 try:
@@ -18,6 +18,7 @@ except ImportError:
 
 
 _PHONE_PUNCTUATION = str.maketrans("", "", "+-.() \t")
+MAX_IDENTIFIER_LENGTH = 256
 
 
 def _looks_like_phone(raw: str) -> bool:
@@ -29,6 +30,10 @@ def _looks_like_phone(raw: str) -> bool:
 
 def coerce(raw: str, forced_type: str | None = None) -> Identifier:
     raw = raw.strip()
+    if not raw:
+        raise ValueError("identifier cannot be empty")
+    if len(raw) > MAX_IDENTIFIER_LENGTH:
+        raise ValueError(f"identifier cannot exceed {MAX_IDENTIFIER_LENGTH} characters")
     if forced_type:
         builders = {
             "email": normalize_email, "phone": normalize_phone,
@@ -61,7 +66,7 @@ def parse_args(argv: list) -> argparse.Namespace:
                   help="force how the identifier is interpreted instead of auto-detecting "
                        "(useful for ambiguous values like 'jane.doe')")
     p.add_argument("--max-depth", type=int, default=2,
-                  help="how many pivot hops to follow from the seed (default: 2)")
+                  help=f"how many pivot hops to follow from the seed (0-{MAX_DEPTH}, default: 2)")
     p.add_argument("--sources", default=None,
                   help="comma-separated list of source names to use, e.g. 'github,hibp' "
                        "(default: all enabled sources)")

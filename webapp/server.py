@@ -1,14 +1,22 @@
 from __future__ import annotations
+import asyncio
+import base64
+import binascii
+import hmac
 import logging
+import os
 import time
+from collections import defaultdict, deque
 from pathlib import Path
 
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from starlette.middleware.base import BaseHTTPMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from ossint.__main__ import coerce
+from ossint.__main__ import MAX_IDENTIFIER_LENGTH
 from ossint.models import Identifier, IdentifierType
 from ossint.normalizers import normalize_email, normalize_phone
 from ossint.orchestrator import Orchestrator
@@ -22,7 +30,95 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 BASE = Path(__file__).resolve().parent
 ROOT = BASE.parent
 
+
+def _basic_auth_valid(header: str | None, username: str, password: str) -> bool:
+    if not header or not header.startswith("Basic "):
+        return False
+    try:
+        decoded = base64.b64decode(header[6:], validate=True).decode("utf-8")
+    except (binascii.Error, UnicodeDecodeError):
+        return False
+    supplied_user, separator, supplied_password = decoded.partition(":")
+    return bool(separator) and hmac.compare_digest(supplied_user, username) and \
+        hmac.compare_digest(supplied_password, password)
+
+
+class RequestRateLimiter:
+    def __init__(self, limit: int = 20, window: float = 60.0):
+        if limit < 1 or window <= 0:
+            raise ValueError("rate limiter limit and window must be positive")
+        self.limit = limit
+        self.window = window
+        self._requests: dict[str, deque] = defaultdict(deque)
+
+    def allow(self, key: str, now: float | None = None) -> bool:
+        current = time.monotonic() if now is None else now
+        requests = self._requests[key]
+        while requests and current - requests[0] >= self.window:
+            requests.popleft()
+        if len(requests) >= self.limit:
+            return False
+        requests.append(current)
+        return True
+
+
+class BasicAuthMiddleware(BaseHTTPMiddleware):
+    """Optional protection for deployments that expose the web app remotely."""
+
+    async def dispatch(self, request: Request, call_next):
+        username = os.environ.get("OSSINT_WEB_USERNAME")
+        password = os.environ.get("OSSINT_WEB_PASSWORD")
+        if not username and not password:
+            return await call_next(request)
+        if not username or not password:
+            return Response("Web authentication is misconfigured", status_code=503)
+        if not _basic_auth_valid(request.headers.get("Authorization"), username, password):
+            return Response(
+                "Authentication required", status_code=401,
+                headers={"WWW-Authenticate": 'Basic realm="OSSINT"'})
+        return await call_next(request)
+
+
+class SearchGuardMiddleware(BaseHTTPMiddleware):
+    """Bound inbound search volume and simultaneous search executions."""
+
+    def __init__(self, app, limit: int = 20, window: float = 60.0,
+                 max_concurrent: int = 4):
+        super().__init__(app)
+        if max_concurrent < 1:
+            raise ValueError("max_concurrent must be positive")
+        self.rate_limiter = RequestRateLimiter(limit, window)
+        self._active = 0
+        self._max_concurrent = max_concurrent
+        self._lock = asyncio.Lock()
+
+    async def dispatch(self, request: Request, call_next):
+        if request.method != "POST" or request.url.path != "/search":
+            return await call_next(request)
+        client_key = request.client.host if request.client else "unknown"
+        if not self.rate_limiter.allow(client_key):
+            return Response("Too many search requests", status_code=429,
+                            headers={"Retry-After": "60"})
+        async with self._lock:
+            if self._active >= self._max_concurrent:
+                return Response("Too many searches in progress", status_code=429,
+                                headers={"Retry-After": "10"})
+            self._active += 1
+        try:
+            return await call_next(request)
+        finally:
+            async with self._lock:
+                self._active -= 1
+
+
 app = FastAPI(title="OSSINT Web", docs_url=None, redoc_url=None)
+app.add_middleware(BasicAuthMiddleware)
+app.add_middleware(
+    SearchGuardMiddleware,
+    limit=int(os.environ.get("OSSINT_WEB_RATE_LIMIT", "20")),
+    window=float(os.environ.get("OSSINT_WEB_RATE_WINDOW", "60")),
+    max_concurrent=int(os.environ.get("OSSINT_WEB_MAX_CONCURRENT", "4")),
+)
 templates = Jinja2Templates(directory=str(BASE / "templates"))
 app.mount("/static", StaticFiles(directory=str(BASE / "static")), name="static")
 store = ReportStore(ROOT / "reports")
@@ -86,6 +182,7 @@ def prepare_report(data: dict) -> dict:
         "groups": groups,
         "findings": findings,
         "total": len(findings),
+        "source_stats": data.get("source_stats") or {},
         "shows_details": any(f.get("details_summary") for f in findings),
         "pivots": pivots,
     }
@@ -115,6 +212,10 @@ async def platforms(request: Request):
 def coerce_as(raw: str, identifier_type: str) -> Identifier:
     """Parse an input from a type-specific search form."""
     raw = raw.strip()
+    if not raw:
+        raise ValueError("identifier cannot be empty")
+    if len(raw) > MAX_IDENTIFIER_LENGTH:
+        raise ValueError(f"identifier cannot exceed {MAX_IDENTIFIER_LENGTH} characters")
     try:
         kind = IdentifierType(identifier_type)
     except ValueError as exc:
@@ -146,9 +247,10 @@ async def search(q: str = Form(...), search_type: str = Form("auto"), proxy: str
     if platform and platform not in PLATFORMS:
         return HTMLResponse("<p>Unknown platform.</p><p><a href='/platforms'>Back</a></p>",
                             status_code=400)
-    graph = await Orchestrator(max_depth=2, proxy=proxy.strip() or None,
-                               platform=platform or None).run(ident)
-    rid = store.create(ident, graph)
+    orchestrator = Orchestrator(max_depth=2, proxy=proxy.strip() or None,
+                                platform=platform or None)
+    graph = await orchestrator.run(ident)
+    rid = store.create(ident, graph, orchestrator.source_stats)
     return RedirectResponse(f"/report/{rid}", status_code=303)
 
 
@@ -159,6 +261,13 @@ async def report(request: Request, rid: str):
         return HTMLResponse("<p>Report not found.</p><p><a href='/'>Back</a></p>", status_code=404)
     return templates.TemplateResponse(request=request, name="report.html",
                                       context={"request": request, **prepare_report(data)})
+
+
+@app.post("/report/{rid}/delete")
+async def delete_report(rid: str):
+    if not store.delete(rid):
+        return HTMLResponse("Report not found", status_code=404)
+    return RedirectResponse("/history", status_code=303)
 
 
 @app.get("/report/{rid}/pdf")

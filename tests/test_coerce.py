@@ -1,6 +1,7 @@
 import pytest
 
-from ossint.__main__ import coerce
+from ossint.__main__ import MAX_IDENTIFIER_LENGTH, coerce
+from ossint.orchestrator import MAX_DEPTH, Orchestrator
 from ossint.models import IdentifierType
 
 
@@ -35,3 +36,16 @@ class TestCoerceForcedType:
 
     def test_forced_domain(self):
         assert coerce("Example.COM", forced_type="domain").value == "example.com"
+
+    def test_rejects_empty_identifier(self):
+        with pytest.raises(ValueError, match="cannot be empty"):
+            coerce("  ")
+
+    def test_rejects_oversized_identifier(self):
+        with pytest.raises(ValueError, match="cannot exceed"):
+            coerce("x" * (MAX_IDENTIFIER_LENGTH + 1))
+
+    @pytest.mark.parametrize("depth", [-1, MAX_DEPTH + 1])
+    def test_rejects_unsafe_depth(self, depth):
+        with pytest.raises(ValueError, match="max_depth"):
+            Orchestrator(max_depth=depth)

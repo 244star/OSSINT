@@ -52,6 +52,11 @@ class TestCache:
         on_disk = json.loads(path.read_text())
         assert "k" in on_disk
 
+    def test_creates_parent_directory_and_persists_atomically(self, tmp_path):
+        path = tmp_path / "nested" / "cache.json"
+        Cache(path=path).set("k", [{"x": 1}])
+        assert json.loads(path.read_text())["k"]["value"] == [{"x": 1}]
+
     def test_reloads_from_disk_across_instances(self, tmp_path):
         path = tmp_path / "cache.json"
         Cache(path=path).set("k", [{"x": 1}])
