@@ -14,7 +14,7 @@
 <main class="container">
   <header class="report-header">
     <h1>Platform search</h1>
-    <p class="muted">Search one publicly indexed platform at a time.</p>
+    <p class="muted">Search one platform or all listed platforms through public search indexes.</p>
   </header>
 
   <form method="post" action="/search">
@@ -31,6 +31,9 @@
       </select>
     </section>
     <section class="platform-grid" aria-label="Choose platform">
+      <button class="platform-button" type="submit" name="platform" value="all">
+        <span>All platforms</span><small>Search every listed platform</small>
+      </button>
       {% for domain, label in platforms.items() %}
       <button class="platform-button" type="submit" name="platform" value="{{ domain }}">
         <span>{{ label }}</span><small>{{ domain }}</small>
@@ -41,5 +44,11 @@
   <p class="muted platform-note">Results only include pages that are public and indexed by search engines. A result is not proof of identity.</p>
   <footer class="muted">For authorized investigations only.</footer>
 </main>
+<section class="chatbox" aria-label="OSSINT assistant">
+  <h2>OSSINT assistant</h2>
+  <div class="chat-messages"><div class="chat-message chat-assistant">Ask me how to search platforms.</div></div>
+  <form><input aria-label="Ask the assistant" placeholder="Ask a question"><button type="submit">Ask</button></form>
+</section>
+<script src="/static/chat.js"></script>
 </body>
 </html>

@@ -13,6 +13,9 @@ class HibpSource(Source):
     handles = {IdentifierType.EMAIL}
     min_interval = 2.0
 
+    def availability(self):
+        return (True, None) if os.getenv("HIBP_API_KEY") else (False, "HIBP_API_KEY")
+
     async def query(self, identifier: Identifier, client):
         key = os.getenv("HIBP_API_KEY")
         if not key:

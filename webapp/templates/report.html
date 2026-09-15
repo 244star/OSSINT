@@ -68,6 +68,39 @@
     {% endif %}
   </section>
 
+  {% if platform_groups %}
+  <section class="card">
+    <h2>Platform candidates</h2>
+    <p class="muted">Review these public matches individually; a match is not proof of identity.</p>
+    {% for group in platform_groups %}
+    <details class="platform-candidate">
+      <summary>{{ group.platform }} ({{ group.findings|length }})</summary>
+      <ul>
+      {% for f in group.findings %}
+        <li>
+          {% if f.url %}<a href="{{ f.url }}" target="_blank" rel="noopener">{{ f.identifier }}</a>
+          {% else %}<code>{{ f.identifier }}</code>{% endif %}
+          <span class="badge conf-{{ f.confidence }}">{{ f.confidence }}</span>
+        </li>
+      {% endfor %}
+      </ul>
+    </details>
+    {% endfor %}
+  </section>
+  {% endif %}
+
+  {% if linked_accounts %}
+  <section class="card">
+    <h2>Potentially linked accounts</h2>
+    <p class="muted">The same identifier was observed across multiple platforms. Verify manually; this is an association signal, not proof of ownership.</p>
+    <ul class="pivots">
+    {% for account in linked_accounts %}
+      <li><code>{{ account.identifier }}</code> — {{ account.platforms|join(", ") }}</li>
+    {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+
   {% if source_stats %}
   <section class="card">
     <h2>Source activity</h2>
@@ -78,7 +111,8 @@
         <tr>
           <td>{{ source }}</td>
           <td>
-            {% if stats.failed %}failed
+            {% if stats.unavailable %}unavailable
+            {% elif stats.failed %}failed
             {% elif stats.cached == stats.queries %}cached
             {% else %}completed{% endif %}
           </td>
@@ -105,5 +139,11 @@
 
   <footer class="muted no-print">For authorized investigations only.</footer>
 </main>
+<section class="chatbox" data-report-id="{{ id }}" aria-label="OSSINT assistant">
+  <h2>OSSINT assistant</h2>
+  <div class="chat-messages"><div class="chat-message chat-assistant">Ask me about this report or how to review candidates.</div></div>
+  <form><input aria-label="Ask the assistant" placeholder="Ask about this report"><button type="submit">Ask</button></form>
+</section>
+<script src="/static/chat.js"></script>
 </body>
 </html>

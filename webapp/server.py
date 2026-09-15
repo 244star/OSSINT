@@ -19,7 +19,7 @@ from ossint.__main__ import coerce
 from ossint.__main__ import MAX_IDENTIFIER_LENGTH
 from ossint.models import Identifier, IdentifierType
 from ossint.normalizers import normalize_email, normalize_phone
-from ossint.orchestrator import Orchestrator
+from ossint.orchestrator import PLATFORM_DOMAINS, Orchestrator
 from ossint.reporting import graph_dict_to_gml
 
 from .pdf_export import render_report_pdf
@@ -122,6 +122,7 @@ app.add_middleware(
 templates = Jinja2Templates(directory=str(BASE / "templates"))
 app.mount("/static", StaticFiles(directory=str(BASE / "static")), name="static")
 store = ReportStore(ROOT / "reports")
+CHAT_MAX_LENGTH = 1000
 
 ORDER = ["email", "phone", "username", "name", "domain"]
 PLATFORMS = {
@@ -133,6 +134,50 @@ PLATFORMS = {
     "t.me": "Telegram", "tumblr.com": "Tumblr", "soundcloud.com": "SoundCloud",
     "kick.com": "Kick", "substack.com": "Substack",
 }
+PLATFORMS = {domain: PLATFORMS[domain] for domain in PLATFORM_DOMAINS}
+
+
+def local_chat_answer(question: str, report: dict | None = None) -> str:
+    q = question.lower()
+    if "linked" in q or "account" in q:
+        return ("Potentially linked accounts show the same identifier across platforms. "
+                "That is an association signal, not proof of ownership.")
+    if "confidence" in q or "verified" in q:
+        return ("Verified means a source explicitly confirmed a result; likely is suggestive. "
+                "Open the source link and verify identity manually.")
+    if "unavailable" in q or "no finding" in q or "no result" in q:
+        return ("Check Source activity: unavailable means a key/tool is missing, failed means "
+                "the source errored, and completed with zero findings means no match was returned.")
+    if any(word in q for word in ("how", "search", "find", "platform")):
+        return ("Enter an identifier on the home page to search all listed platforms. "
+                "Use Platforms for one platform, then review each candidate link manually.")
+    if report:
+        count = len((report.get("graph") or {}).get("findings", []))
+        return (f"This report contains {count} finding(s). Review Platform candidates and "
+                "Potentially linked accounts before deciding whether a match is relevant.")
+    return ("I can help you navigate OSSINT. Ask about searching, candidates, confidence, "
+            "source status, or linked accounts.")
+
+
+async def chat_response(question: str, report: dict | None = None) -> str:
+    api_url = os.environ.get("OSSINT_CHAT_API_URL")
+    api_key = os.environ.get("OSSINT_CHAT_API_KEY")
+    if not api_url and not api_key:
+        return local_chat_answer(question, report)
+    if not api_url or not api_key:
+        raise ValueError("OSSINT_CHAT_API_URL and OSSINT_CHAT_API_KEY must both be configured")
+    payload = {"model": os.environ.get("OSSINT_CHAT_MODEL", "gpt-4o-mini"),
+               "messages": [
+                   {"role": "system", "content": (
+                       "You are the OSSINT navigation assistant. Explain app navigation and "
+                       "report interpretation cautiously. Never claim identity or ownership.")},
+                   {"role": "user", "content": question},
+               ]}
+    async with httpx.AsyncClient(timeout=20) as client:
+        response = await client.post(
+            api_url, headers={"Authorization": f"Bearer {api_key}"}, json=payload)
+    response.raise_for_status()
+    return response.json()["choices"][0]["message"]["content"]
 
 
 def prepare_report(data: dict) -> dict:
@@ -147,6 +192,8 @@ def prepare_report(data: dict) -> dict:
     groups = {k: groups[k] for k in sorted(groups, key=lambda t: ORDER.index(t) if t in ORDER else 99)}
 
     findings = []
+    platform_findings: dict[str, list] = {}
+    linked_sources: dict[str, set[str]] = {}
     for f in graph["findings"]:
         details = f.get("details") or {}
         breaches = details.get("breaches") if isinstance(details, dict) else None
@@ -156,16 +203,34 @@ def prepare_report(data: dict) -> dict:
             summary = " — ".join(str(v) for v in (details.get("title"), details.get("snippet")) if v)
         else:
             summary = ""
-        findings.append({
+        platform = f["source"].removeprefix("web:")
+        finding = {
             "identifier": f["identifier"]["value"],
             "source": f["source"],
+            "platform": platform,
             "confidence": f["confidence"],
             "url": f.get("url"),
             "details_summary": summary,
             "details": details,
-        })
+        }
+        findings.append(finding)
+        platform_findings.setdefault(platform, []).append(finding)
+        linked_sources.setdefault(f["identifier"]["key"], set()).add(platform)
     findings.sort(key=lambda x: ("verified", "likely", "unsure").index(x["confidence"])
                   if x["confidence"] in ("verified", "likely", "unsure") else 3)
+    platform_groups = [
+        {"platform": platform, "findings": items}
+        for platform, items in sorted(platform_findings.items())
+    ]
+    linked_accounts = []
+    for identifier_key, sources in linked_sources.items():
+        if len(sources) < 2:
+            continue
+        identifier = lookup.get(identifier_key)
+        linked_accounts.append({
+            "identifier": identifier["value"] if identifier else identifier_key,
+            "platforms": sorted(sources),
+        })
 
     pivots = []
     for p in graph["pivots"]:
@@ -181,6 +246,8 @@ def prepare_report(data: dict) -> dict:
         "when": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(data["created"])),
         "groups": groups,
         "findings": findings,
+        "platform_groups": platform_groups,
+        "linked_accounts": linked_accounts,
         "total": len(findings),
         "source_stats": data.get("source_stats") or {},
         "shows_details": any(f.get("details_summary") for f in findings),
@@ -193,6 +260,29 @@ async def index(request: Request):
     return templates.TemplateResponse(request=request, name="index.html",
                                       context={"request": request,
                                                "recent": store.list_recent()})
+
+
+@app.post("/chat")
+async def chat(request: Request):
+    try:
+        payload = await request.json()
+    except ValueError:
+        return Response("Invalid JSON", status_code=400)
+    question = payload.get("question") if isinstance(payload, dict) else None
+    if not isinstance(question, str) or not question.strip():
+        return Response("Question is required", status_code=400)
+    if len(question) > CHAT_MAX_LENGTH:
+        return Response("Question is too long", status_code=413)
+    report = None
+    report_id = payload.get("report_id") if isinstance(payload, dict) else None
+    if isinstance(report_id, str):
+        report = store.load(report_id)
+    try:
+        answer = await chat_response(question.strip(), report)
+    except (ValueError, httpx.HTTPError, KeyError) as exc:
+        logging.warning("chat request failed: %s", exc)
+        return Response("Chat service is unavailable", status_code=503)
+    return {"answer": answer}
 
 
 @app.get("/history", response_class=HTMLResponse)
@@ -244,11 +334,11 @@ async def search(q: str = Form(...), search_type: str = Form("auto"), proxy: str
     except ValueError as exc:
         return HTMLResponse(f"<p>Invalid input: {exc}</p><p><a href='/'>Back</a></p>",
                             status_code=400)
-    if platform and platform not in PLATFORMS:
+    if platform and platform != "all" and platform not in PLATFORMS:
         return HTMLResponse("<p>Unknown platform.</p><p><a href='/platforms'>Back</a></p>",
                             status_code=400)
     orchestrator = Orchestrator(max_depth=2, proxy=proxy.strip() or None,
-                                platform=platform or None)
+                                platform=platform.strip() if platform else "all")
     graph = await orchestrator.run(ident)
     rid = store.create(ident, graph, orchestrator.source_stats)
     return RedirectResponse(f"/report/{rid}", status_code=303)

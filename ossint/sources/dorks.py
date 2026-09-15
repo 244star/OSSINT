@@ -31,6 +31,11 @@ class SerperDorkSource(Source):
 
     def __init__(self, site: str | None = None):
         self.site = site
+        if site:
+            self.name = f"serper:{site}"
+
+    def availability(self):
+        return (True, None) if os.getenv("SERPER_API_KEY") else (False, "SERPER_API_KEY")
 
     async def query(self, identifier: Identifier, client: httpx.AsyncClient):
         key = os.getenv("SERPER_API_KEY")

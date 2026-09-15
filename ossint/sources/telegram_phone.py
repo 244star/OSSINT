@@ -12,6 +12,15 @@ class TelegramPhoneSource(Source):
     name = "telegram-phone"
     handles = {IdentifierType.PHONE}
 
+    def availability(self):
+        if not os.getenv("TELEGRAM_API_ID") or not os.getenv("TELEGRAM_API_HASH"):
+            return False, "TELEGRAM_API_ID/TELEGRAM_API_HASH"
+        try:
+            import telethon  # noqa: F401
+        except ImportError:
+            return False, "telethon package"
+        return True, None
+
     async def query(self, identifier: Identifier, client):
         api_id, api_hash = os.getenv("TELEGRAM_API_ID"), os.getenv("TELEGRAM_API_HASH")
         if not (api_id and api_hash):

@@ -46,3 +46,15 @@ async def test_legacy_safe_query_still_returns_findings_list():
     async with httpx.AsyncClient() as client:
         findings = await SuccessfulSource().safe_query(identifier, client)
     assert findings == []
+
+
+@pytest.mark.asyncio
+async def test_missing_configuration_is_reported_as_unavailable():
+    source = FailingSource()
+    source.availability = lambda: (False, "test configuration")
+    identifier = Identifier(IdentifierType.EMAIL, "jane@example.com")
+    async with httpx.AsyncClient() as client:
+        findings, status, reason = await source.safe_query_with_status(identifier, client)
+    assert findings == []
+    assert status == "unavailable"
+    assert reason == "test configuration"

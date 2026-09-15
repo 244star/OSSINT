@@ -16,6 +16,9 @@ class MaigretSource(Source):
     name = "maigret"
     handles = {IdentifierType.USERNAME}
 
+    def availability(self):
+        return (True, None) if shutil.which("maigret") else (False, "maigret executable")
+
     async def query(self, identifier: Identifier, client: httpx.AsyncClient):
         # Prefer a normal PATH installation, but also support the executable
         # installed into this project's virtual environment.
@@ -48,6 +51,9 @@ class SocialscanSource(Source):
     """Email+username availability across ~15 major platforms via `socialscan`."""
     name = "socialscan"
     handles = {IdentifierType.EMAIL, IdentifierType.USERNAME}
+
+    def availability(self):
+        return (True, None) if shutil.which("socialscan") else (False, "socialscan executable")
 
     async def query(self, identifier: Identifier, client: httpx.AsyncClient):
         if not shutil.which("socialscan"):

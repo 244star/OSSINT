@@ -50,6 +50,11 @@ Supported environment variables are documented in `.env.example`, including:
 - `OSSINT_WEB_USERNAME` and `OSSINT_WEB_PASSWORD` for optional web auth
 - `OSSINT_WEB_RATE_LIMIT`, `OSSINT_WEB_RATE_WINDOW`, and
   `OSSINT_WEB_MAX_CONCURRENT` for inbound search limits
+- `OSSINT_MAX_IDENTIFIERS` and `OSSINT_MAX_FINDINGS` for bounded core search
+  expansion
+- `OSSINT_CHAT_API_URL`, `OSSINT_CHAT_API_KEY`, and `OSSINT_CHAT_MODEL` for
+  optional OpenAI-compatible chatbot mode. Without these, the local navigation
+  assistant is used and no report data leaves the application.
 
 External CLI sources require `maigret` and/or `socialscan` on `PATH`.
 Install those optional integrations with:
@@ -57,6 +62,10 @@ Install those optional integrations with:
 ```powershell
 python -m pip install -r requirements-optional.txt
 ```
+
+The Platforms page supports both a single-platform search and an all-platform
+search. All-platform mode issues one public search-index query per listed
+platform, so it requires `SERPER_API_KEY` and consumes more API quota.
 
 ## Testing
 

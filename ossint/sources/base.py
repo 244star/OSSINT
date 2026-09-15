@@ -38,6 +38,10 @@ class Source(abc.ABC):
     def _cache_key(self, identifier: Identifier) -> str:
         return f"{self.name}:{identifier.key()}"
 
+    def availability(self) -> tuple[bool, str | None]:
+        """Return whether this source can run in the current environment."""
+        return True, None
+
     async def safe_query(self, identifier: Identifier, client: httpx.AsyncClient) -> list:
         findings, _, _ = await self.safe_query_with_status(identifier, client)
         return findings
@@ -50,6 +54,11 @@ class Source(abc.ABC):
         errors so a single flaky request doesn't drop a source's findings for
         the whole run.
         """
+        available, reason = self.availability()
+        if not available:
+            log.info("[%s] unavailable: %s", self.name, reason)
+            return [], "unavailable", reason
+
         key = self._cache_key(identifier)
         cached = get_cache().get(key, self.cache_ttl)
         if cached is not None:

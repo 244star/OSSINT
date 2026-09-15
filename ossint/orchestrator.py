@@ -2,6 +2,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+from collections import deque
 
 import httpx
 
@@ -23,6 +24,14 @@ ACTIVE_SOURCES = REGISTRY + [MaigretSource(), SocialscanSource(),
 UA = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) ossint/0.1"}
 MAX_DEPTH = 4
 MAX_CONCURRENT_QUERIES = 20
+DEFAULT_MAX_IDENTIFIERS = 500
+DEFAULT_MAX_FINDINGS = 1000
+PLATFORM_DOMAINS = (
+    "linkedin.com", "x.com", "instagram.com", "facebook.com", "tiktok.com",
+    "github.com", "medium.com", "pinterest.com", "youtube.com", "reddit.com",
+    "threads.net", "bsky.app", "twitch.tv", "snapchat.com", "t.me",
+    "tumblr.com", "soundcloud.com", "kick.com", "substack.com",
+)
 
 
 def expand(identifier: Identifier) -> list:
@@ -35,19 +44,33 @@ def expand(identifier: Identifier) -> list:
 class Orchestrator:
     def __init__(self, max_depth: int = 2, proxy: str | None = None,
                  platform: str | None = None, include_sources: set[str] | None = None,
-                 exclude_sources: set[str] | None = None):
+                 exclude_sources: set[str] | None = None,
+                 max_identifiers: int | None = None, max_findings: int | None = None):
         if not 0 <= max_depth <= MAX_DEPTH:
             raise ValueError(f"max_depth must be between 0 and {MAX_DEPTH}")
         self.graph = CorrelationGraph()
         self.seen: set = set()
         self.max_depth = max_depth
+        self.max_identifiers = (int(os.environ.get(
+            "OSSINT_MAX_IDENTIFIERS", DEFAULT_MAX_IDENTIFIERS))
+            if max_identifiers is None else max_identifiers)
+        self.max_findings = (int(os.environ.get(
+            "OSSINT_MAX_FINDINGS", DEFAULT_MAX_FINDINGS))
+            if max_findings is None else max_findings)
+        if self.max_identifiers < 1 or self.max_findings < 1:
+            raise ValueError("search limits must be positive")
         self._query_limit = asyncio.Semaphore(MAX_CONCURRENT_QUERIES)
         self.source_stats: dict[str, dict[str, int]] = {}
         # A platform page uses a dedicated site-restricted Serper source while
         # preserving the other public and optional sources.
-        sources = (REGISTRY + [MaigretSource(), SocialscanSource(),
-                   SerperDorkSource(platform), TelegramPhoneSource(), HibpSource()]
-                   if platform else ACTIVE_SOURCES)
+        if platform == "all":
+            dork_sources = [SerperDorkSource(site) for site in PLATFORM_DOMAINS]
+            sources = REGISTRY + [MaigretSource(), SocialscanSource(),
+                       *dork_sources, TelegramPhoneSource(), HibpSource()]
+        else:
+            sources = (REGISTRY + [MaigretSource(), SocialscanSource(),
+                       SerperDorkSource(platform), TelegramPhoneSource(), HibpSource()]
+                       if platform else ACTIVE_SOURCES)
         if include_sources:
             sources = [s for s in sources if s.name in include_sources]
         if exclude_sources:
@@ -81,32 +104,48 @@ class Orchestrator:
     async def run(self, seed: Identifier) -> CorrelationGraph:
         client = await self._client()
         try:
-            await self._wave([seed], 0, client)
+            await self._search_queue(seed, client)
         finally:
             await client.aclose()
         return self.graph
 
-    async def _wave(self, batch: list, depth: int, client: httpx.AsyncClient):
-        fresh = [i for i in batch if i.key() not in self.seen]
-        self.seen.update(i.key() for i in fresh)
-        if not fresh or depth > self.max_depth:
-            return
+    async def _search_queue(self, seed: Identifier, client: httpx.AsyncClient):
+        queue = deque([(seed, 0)])
+        while queue and len(self.seen) < self.max_identifiers:
+            batch = []
+            while queue and len(batch) < MAX_CONCURRENT_QUERIES:
+                identifier, depth = queue.popleft()
+                if identifier.key() in self.seen or depth > self.max_depth:
+                    continue
+                self.seen.add(identifier.key())
+                batch.append((identifier, depth))
+            if not batch:
+                continue
 
-        tasks = []
-        for i in fresh:
-            for s in self.sources:
-                if s.enabled and i.type in s.handles:
-                    tasks.append(asyncio.create_task(self._query(s, i, client)))
+            tasks = []
+            for i, depth in batch:
+                for s in self.sources:
+                    if s.enabled and i.type in s.handles:
+                        tasks.append((asyncio.create_task(self._query(s, i, client)), depth))
 
-        next_wave: list = []
-        if tasks:
-            for task in asyncio.as_completed(tasks):
-                for f in await task:
-                    log.info("hit: %s via %s [%s]", f.identifier, f.source, f.confidence.value)
-                    self.graph.add_finding(f)
-                    next_wave.extend(f.pivots)
-        next_wave += [p for i in fresh for p in expand(i)]
-        await self._wave(next_wave, depth + 1, client)
+            if tasks:
+                results = await asyncio.gather(*(task for task, _ in tasks))
+                for findings, (_, depth) in zip(results, tasks):
+                    for f in findings:
+                        if len(self.graph.findings) >= self.max_findings:
+                            break
+                        log.info("hit: %s via %s [%s]", f.identifier, f.source, f.confidence.value)
+                        self.graph.add_finding(f)
+                        for pivot in f.pivots:
+                            if len(self.seen) + len(queue) >= self.max_identifiers:
+                                break
+                            queue.append((pivot, depth + 1))
+
+            for identifier, depth in batch:
+                for pivot in expand(identifier):
+                    if len(self.seen) + len(queue) >= self.max_identifiers:
+                        break
+                    queue.append((pivot, depth + 1))
 
     async def _query(self, source, identifier, client):
         async with self._query_limit:

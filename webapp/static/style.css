@@ -73,3 +73,14 @@ footer { text-align: center; padding: 20px 0; }
 .inline-form {
   display: inline;
 }
+.platform-candidate { margin: 8px 0; }
+.platform-candidate summary { color: var(--accent); cursor: pointer; font-weight: 600; }
+.chatbox { position: fixed; right: 20px; bottom: 20px; width: min(360px, calc(100vw - 40px)); background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px; z-index: 20; box-shadow: 0 8px 30px rgba(0,0,0,.35); }
+.chatbox h2 { font-size: 16px; margin: 0 0 8px; }
+.chat-messages { max-height: 180px; overflow-y: auto; display: grid; gap: 6px; margin-bottom: 8px; }
+.chat-message { padding: 7px 9px; border-radius: 8px; font-size: 13px; white-space: pre-wrap; }
+.chat-user { background: #26345f; }
+.chat-assistant { background: #20263d; }
+.chat-error { color: #ff9b9b; }
+.chatbox form { display: flex; gap: 6px; }
+.chatbox input { min-width: 0; flex: 1; padding: 8px; border-radius: 7px; border: 1px solid var(--line); background: #0b0e1b; color: var(--text); }

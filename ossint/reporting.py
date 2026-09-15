@@ -43,6 +43,7 @@ def graph_to_dict(graph) -> dict:
             "confidence": f.confidence.value,
             "url": f.url,
             "details": f.details,
+            "pivots": [p.to_dict() for p in f.pivots],
         })
     pivots = []
     for u, v, d in graph.g.edges(data=True):
