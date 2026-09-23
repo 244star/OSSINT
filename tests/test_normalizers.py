@@ -1,7 +1,7 @@
 import pytest
 
-from ossint.models import Identifier, IdentifierType
-from ossint.normalizers import (
+from osint.models import Identifier, IdentifierType
+from osint.normalizers import (
     email_permutations, gravatar_hash, looks_like_domain, normalize_domain,
     normalize_email, normalize_phone, username_candidates,
 )

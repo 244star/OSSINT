@@ -2,12 +2,12 @@
 import asyncio
 import os
 
-os.environ["OSSINT_PROXY"] = "http://127.0.0.1:9999"
+os.environ["OSINT_PROXY"] = "http://127.0.0.1:9999"
 
-from ossint.graph import CorrelationGraph
-from ossint.models import Confidence, Finding, Identifier, IdentifierType
-from ossint.orchestrator import Orchestrator
-from ossint.reporting import graph_dict_to_gml, graph_to_dict, graph_to_gml
+from osint.graph import CorrelationGraph
+from osint.models import Confidence, Finding, Identifier, IdentifierType
+from osint.orchestrator import Orchestrator
+from osint.reporting import graph_dict_to_gml, graph_to_dict, graph_to_gml
 
 
 async def make_client(orch):

@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>OSSINT Report - {{ seed }}</title>
+<title>OSINT Investigation Brief - {{ seed }}</title>
 <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
 <div class="topbar no-print">
-  <a class="brand" href="/">OSSINT</a>
+  <a class="brand" href="/">OSINT</a>
   <div class="actions">
     <a class="btn" href="/history">History</a>
     <button onclick="window.print()">&#128424; Print / Save as PDF</button>
@@ -19,14 +19,41 @@
 
 <main class="container report">
   <header class="report-header">
-    <h1>OSSINT Report</h1>
-    <p class="seed">Seed: <code>{{ seed }}</code></p>
-    <p class="muted">Generated {{ when }} &#183; {{ total }} finding{% if total != 1 %}s{% endif %}</p>
+    <div class="eyebrow">OSINT / INVESTIGATION BRIEF</div>
+    <h1>Public-source findings</h1>
+    <p class="seed"><span>Seed identifier</span> <code>{{ seed }}</code></p>
+    <p class="muted">Generated {{ when }} <span class="dot">&middot;</span> Report {{ id }}</p>
   </header>
 
+  <section class="summary-grid" aria-label="Report summary">
+    <div class="metric"><span class="metric-label">Findings</span><strong>{{ total }}</strong><span class="metric-note">observations collected</span></div>
+    <div class="metric"><span class="metric-label">Identifiers</span><strong>{{ identifier_count }}</strong><span class="metric-note">linked in the graph</span></div>
+    <div class="metric"><span class="metric-label">Sources</span><strong>{{ source_count }}</strong><span class="metric-note">distinct providers</span></div>
+    <div class="metric"><span class="metric-label">Confidence</span><strong>{{ confidence_counts.verified }}</strong><span class="metric-note">verified observations</span></div>
+  </section>
+
+  <section class="brief-note">
+    <strong>Assessment scope</strong>
+    <span>Results reflect public-source observations available at scan time. A finding is not proof of identity; review the linked source before acting on it.</span>
+  </section>
+
+  <section class="card confidence-card">
+    <div class="section-heading"><div><span class="section-kicker">01</span><h2>Evidence posture</h2></div><span class="section-caption">{{ source_count }} source{% if source_count != 1 %}s{% endif %} queried</span></div>
+    <div class="confidence-row">
+      <div><span class="badge conf-verified">Verified</span><strong>{{ confidence_counts.verified }}</strong><span class="muted">explicit server confirmation</span></div>
+      <div><span class="badge conf-likely">Likely</span><strong>{{ confidence_counts.likely }}</strong><span class="muted">credible search or source hit</span></div>
+      <div><span class="badge conf-unsure">Unsure</span><strong>{{ confidence_counts.unsure }}</strong><span class="muted">collision or weak signal</span></div>
+    </div>
+  </section>
+
+  {% if source_names %}
+  <section class="source-strip"><span class="section-kicker">SOURCE COVERAGE</span>{% for source in source_names %}<span class="source-chip">{{ source }}</span>{% endfor %}</section>
+  {% endif %}
+
+  <div class="section-heading standalone"><div><span class="section-kicker">02</span><h2>Identifier map</h2></div><span class="section-caption">ranked by corroboration</span></div>
   {% for type, items in groups.items() %}
-  <section class="card">
-    <h2>{{ type|upper }} ({{ items|length }})</h2>
+  <section class="card identifier-card">
+    <div class="section-heading"><h3>{{ type|upper }}</h3><span class="section-caption">{{ items|length }} linked</span></div>
     <table>
       <thead><tr><th>Identifier</th><th>Corroboration</th></tr></thead>
       <tbody>
@@ -38,8 +65,8 @@
   </section>
   {% endfor %}
 
-  <section class="card">
-    <h2>Findings</h2>
+  <section class="card findings-card">
+    <div class="section-heading"><div><span class="section-kicker">03</span><h2>Evidence ledger</h2></div><span class="section-caption">{{ total }} observation{% if total != 1 %}s{% endif %}</span></div>
     {% if findings %}
     <table>
       <thead>
@@ -54,7 +81,7 @@
           <td>{% if f.url %}<a href="{{ f.url }}" target="_blank" rel="noopener">open</a>{% else %}&mdash;{% endif %}</td>
           <td class="evidence">
             {% if f.details_summary %}<div class="muted">{{ f.details_summary }}</div>{% endif %}
-            {% if f.details %}<details><summary>View source data</summary><pre>{{ f.details | tojson(indent=2) }}</pre></details>{% else %}<span class="muted">&mdash;</span>{% endif %}
+            {% if f.details %}<details><summary>Inspect source data</summary><pre>{{ f.details | tojson(indent=2) }}</pre></details>{% else %}<span class="muted">No additional source metadata</span>{% endif %}
           </td>
         </tr>
       {% endfor %}
@@ -66,8 +93,8 @@
   </section>
 
   {% if pivots %}
-  <section class="card">
-    <h2>Pivots (co-occurrences)</h2>
+  <section class="card pivot-card">
+    <div class="section-heading"><div><span class="section-kicker">04</span><h2>Pivot trail</h2></div><span class="section-caption">linked identifiers</span></div>
     <ul class="pivots">
     {% for p in pivots %}
       <li><code>{{ p.from }}</code> &#8594; <code>{{ p.to }}</code> <span class="muted">(weight {{ p.weight }})</span></li>

@@ -1,8 +1,8 @@
 import json
 import time
 
-from ossint.cache import Cache
-from ossint.models import Confidence, Finding, Identifier, IdentifierType
+from osint.cache import Cache
+from osint.models import Confidence, Finding, Identifier, IdentifierType
 
 
 def make_finding():

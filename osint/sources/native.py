@@ -10,7 +10,7 @@ from ..models import Confidence, Finding, Identifier, IdentifierType
 from ..normalizers import gravatar_hash
 from .base import Source
 
-log = logging.getLogger("ossint")
+log = logging.getLogger("osint")
 
 
 class NativeSource(Source):
@@ -67,7 +67,7 @@ class RedditUserSource(NativeSource):
 
     async def query(self, identifier, client):
         r = await client.get(f"https://www.reddit.com/user/{identifier.value}/about.json",
-                             headers={"User-Agent": "ossint/0.1 research"})
+                             headers={"User-Agent": "osint/0.1 research"})
         if r.status_code == 200:
             data = r.json().get("data", {})
             return [self.finding(identifier, url=f"https://reddit.com/u/{identifier.value}",

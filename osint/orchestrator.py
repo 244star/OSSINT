@@ -14,13 +14,13 @@ from .sources.dorks import SerperDorkSource
 from .sources.telegram_phone import TelegramPhoneSource
 from .sources.breaches import HibpSource
 
-log = logging.getLogger("ossint")
+log = logging.getLogger("osint")
 
 ACTIVE_SOURCES = REGISTRY + [MaigretSource(), SocialscanSource(),
                              SerperDorkSource(), TelegramPhoneSource(),
                              HibpSource()]
 
-UA = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) ossint/0.1"}
+UA = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) osint/0.1"}
 
 
 def expand(identifier: Identifier) -> list:
@@ -47,8 +47,8 @@ class Orchestrator:
         if exclude_sources:
             sources = [s for s in sources if s.name not in exclude_sources]
         self.sources = sources
-        # Explicit proxy wins; otherwise fall back to OSSINT_PROXY env var.
-        self.proxy = proxy or os.environ.get("OSSINT_PROXY") or None
+        # Explicit proxy wins; otherwise fall back to OSINT_PROXY env var.
+        self.proxy = proxy or os.environ.get("OSINT_PROXY") or None
 
     @staticmethod
     def _http2_available() -> bool:

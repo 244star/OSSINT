@@ -7,22 +7,24 @@ from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from dotenv import load_dotenv
 
-from ossint.__main__ import coerce
-from ossint.models import Identifier, IdentifierType
-from ossint.normalizers import normalize_email, normalize_phone
-from ossint.orchestrator import Orchestrator
-from ossint.reporting import graph_dict_to_gml
+from osint.__main__ import coerce
+from osint.models import Identifier, IdentifierType
+from osint.normalizers import normalize_email, normalize_phone
+from osint.orchestrator import Orchestrator
+from osint.reporting import graph_dict_to_gml
 
 from .pdf_export import render_report_pdf
 from .store import ReportStore
 
+load_dotenv()
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
 BASE = Path(__file__).resolve().parent
 ROOT = BASE.parent
 
-app = FastAPI(title="OSSINT Web", docs_url=None, redoc_url=None)
+app = FastAPI(title="OSINT Web", docs_url=None, redoc_url=None)
 templates = Jinja2Templates(directory=str(BASE / "templates"))
 app.mount("/static", StaticFiles(directory=str(BASE / "static")), name="static")
 store = ReportStore(ROOT / "reports")
@@ -71,6 +73,10 @@ def prepare_report(data: dict) -> dict:
     findings.sort(key=lambda x: ("verified", "likely", "unsure").index(x["confidence"])
                   if x["confidence"] in ("verified", "likely", "unsure") else 3)
 
+    confidence_counts = {level: sum(1 for f in findings if f["confidence"] == level)
+                         for level in ("verified", "likely", "unsure")}
+    source_names = sorted({f["source"] for f in findings})
+
     pivots = []
     for p in graph["pivots"]:
         a = lookup.get(p["from"])
@@ -86,6 +92,10 @@ def prepare_report(data: dict) -> dict:
         "groups": groups,
         "findings": findings,
         "total": len(findings),
+        "confidence_counts": confidence_counts,
+        "source_names": source_names,
+        "source_count": len(source_names),
+        "identifier_count": len(graph["identifiers"]),
         "shows_details": any(f.get("details_summary") for f in findings),
         "pivots": pivots,
     }
@@ -170,7 +180,7 @@ async def report_pdf(rid: str):
     pdf_bytes = render_report_pdf(prepared)
     return Response(content=pdf_bytes, media_type="application/pdf",
                     headers={"Content-Disposition":
-                             f'attachment; filename="ossint_report_{rid}.pdf"'})
+                             f'attachment; filename="osint_report_{rid}.pdf"'})
 
 
 @app.get("/report/{rid}/gml")
@@ -183,4 +193,4 @@ async def report_gml(rid: str):
         return Response("Graph unavailable for this report", status_code=404)
     return Response(content=gml, media_type="application/octet-stream",
                     headers={"Content-Disposition":
-                             f'attachment; filename="ossint_graph_{rid}.gml"'})
+                             f'attachment; filename="osint_graph_{rid}.gml"'})

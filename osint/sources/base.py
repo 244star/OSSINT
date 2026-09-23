@@ -9,7 +9,7 @@ import httpx
 from ..cache import get_cache
 from ..models import Finding, Identifier
 
-log = logging.getLogger("ossint")
+log = logging.getLogger("osint")
 
 # Exceptions worth retrying: transient network hiccups, not logic bugs.
 RETRYABLE = (httpx.TimeoutException, httpx.ConnectError, httpx.ReadError, asyncio.TimeoutError)

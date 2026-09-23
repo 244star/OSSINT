@@ -4,7 +4,7 @@ import time
 import uuid
 from pathlib import Path
 
-from ossint.reporting import graph_to_dict, graph_to_gml
+from osint.reporting import graph_to_dict, graph_to_gml
 
 
 class ReportStore:

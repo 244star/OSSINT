@@ -7,7 +7,7 @@ import networkx as nx
 
 def render_markdown(graph) -> str:
     """Render a human-readable markdown report from the correlation graph."""
-    lines = ["# OSSINT Report", ""]
+    lines = ["# OSINT Report", ""]
     by_type = defaultdict(list)
     for n, d in graph.g.nodes(data=True):
         if d.get("label") == "identifier":

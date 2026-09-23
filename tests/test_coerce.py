@@ -1,7 +1,7 @@
 import pytest
 
-from ossint.__main__ import coerce
-from ossint.models import IdentifierType
+from osint.__main__ import coerce
+from osint.models import IdentifierType
 
 
 class TestCoerceAutoDetect:

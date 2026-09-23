@@ -3,20 +3,20 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>OSSINT People Search</title>
+<title>OSINT People Search</title>
 <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
 <div class="topbar">
-  <a class="brand" href="/">OSSINT</a>
+  <a class="brand" href="/">OSINT</a>
   <nav class="actions">
-    <a class="btn" href="/platforms">Platforms</a>
-    <a class="btn" href="/history">History</a>
+    <a class="btn" href="platforms.html">Platforms</a>
+    <a class="btn" href="history.html">History</a>
   </nav>
 </div>
 <main class="container">
   <header class="hero">
-    <h1>OSSINT</h1>
+    <h1>OSINT</h1>
     <p class="tagline">Find every public trace of a name, email, phone number or username.</p>
   </header>
   <form class="search-box universal-search" method="post" action="/search">
@@ -54,7 +54,7 @@
   </section>
   <details class="opt">
     <summary>Optional: route live lookups through a proxy</summary>
-    <p class="muted small">Set <code>OSSINT_PROXY</code> before starting the app. This is applied to all searches.</p>
+    <p class="muted small">Set <code>OSINT_PROXY</code> before starting the app. This is applied to all searches.</p>
   </details>
   {% if recent %}
   <section class="card">

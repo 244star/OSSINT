@@ -4,6 +4,13 @@ phonenumbers==9.0.39
 networkx==2.8.8
 python-dotenv==1.2.3
 
+# Web application and PDF export
+fastapi
+uvicorn[standard]
+jinja2
+python-multipart
+fpdf2
+
 # Optional — only needed if you use the corresponding source.
 # Comment out what you don't need. socialscan/telethon aren't pinned here —
 # they weren't in the captured environment, so check PyPI for current versions

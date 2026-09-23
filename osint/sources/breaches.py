@@ -18,7 +18,7 @@ class HibpSource(Source):
         if not key:
             return []
         url = f"https://haveibeenpwned.com/api/v3/breachedaccount/{quote(identifier.value)}"
-        headers = {"hibp-api-key": key, "User-Agent": "ossint/0.1"}
+        headers = {"hibp-api-key": key, "User-Agent": "osint/0.1"}
         r = await client.get(url, headers=headers,
                              params={"truncateResponse": "true",
                                      "includeUnverified": "false"})

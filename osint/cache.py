@@ -5,7 +5,7 @@ doesn't re-burn API quota (HIBP, Serper, etc.) or re-hit rate-limited
 endpoints. Stored as a single JSON file — simple, human-inspectable, and
 fine for the request volumes a personal OSINT run produces.
 
-Disable globally with OSSINT_NO_CACHE=1, or override a source's TTL via
+Disable globally with OSINT_NO_CACHE=1, or override a source's TTL via
 its ``cache_ttl`` class attribute (0 disables caching for that source).
 """
 from __future__ import annotations
@@ -18,10 +18,10 @@ from pathlib import Path
 from threading import Lock
 from typing import Any
 
-log = logging.getLogger("ossint")
+log = logging.getLogger("osint")
 
-DEFAULT_PATH = Path(os.getenv("OSSINT_CACHE_PATH", ".ossint_cache.json"))
-DEFAULT_TTL = float(os.getenv("OSSINT_CACHE_TTL", 86400))  # 24h
+DEFAULT_PATH = Path(os.getenv("OSINT_CACHE_PATH", ".osint_cache.json"))
+DEFAULT_TTL = float(os.getenv("OSINT_CACHE_TTL", 86400))  # 24h
 
 
 class Cache:
@@ -29,7 +29,7 @@ class Cache:
         self.path = path
         self._lock = Lock()
         self._data: dict[str, dict[str, Any]] = {}
-        self._disabled = os.getenv("OSSINT_NO_CACHE") == "1"
+        self._disabled = os.getenv("OSINT_NO_CACHE") == "1"
         self._load()
 
     def _load(self) -> None:

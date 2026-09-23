@@ -1,1 +1,1 @@
-"""OSSINT web interface."""
+"""OSINT web interface."""

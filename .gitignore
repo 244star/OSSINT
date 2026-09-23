@@ -2,5 +2,6 @@
 __pycache__/
 .venv/
 reports/
+.osint_cache.json
 report_*.md
 report_*.gml

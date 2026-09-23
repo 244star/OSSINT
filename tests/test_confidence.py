@@ -1,7 +1,7 @@
 import pytest
 
-from ossint.confidence import classify
-from ossint.models import Confidence, IdentifierType
+from osint.confidence import classify
+from osint.models import Confidence, IdentifierType
 
 
 class TestClassifyName:

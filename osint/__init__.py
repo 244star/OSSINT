@@ -1,5 +1,5 @@
 __version__ = "0.1.0"
-"""OSSINT package setup."""
+"""OSINT package setup."""
 
 import os
 from pathlib import Path

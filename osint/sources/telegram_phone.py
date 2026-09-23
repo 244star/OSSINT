@@ -17,7 +17,7 @@ class TelegramPhoneSource(Source):
         if not (api_id and api_hash):
             return []
         from telethon import TelegramClient, functions, types  # optional dep
-        async with TelegramClient("ossint_session", int(api_id), api_hash) as tg:
+        async with TelegramClient("osint_session", int(api_id), api_hash) as tg:
             result = await tg(functions.contacts.ImportContactsRequest(
                 contacts=[types.InputPhoneContact(client_id=0, phone=identifier.value,
                                                   first_name="", last_name="")]))

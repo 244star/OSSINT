@@ -50,7 +50,7 @@ def coerce(raw: str, forced_type: str | None = None) -> Identifier:
 
 def parse_args(argv: list) -> argparse.Namespace:
     p = argparse.ArgumentParser(
-        prog="python -m ossint",
+        prog="python -m osint",
         description="Pivot an identifier (email, phone, name, username, or domain) "
                     "across OSINT sources and build a correlation report.",
     )
@@ -70,11 +70,11 @@ def parse_args(argv: list) -> argparse.Namespace:
     p.add_argument("--platform", default=None,
                   help="restrict the search-engine dork source to a specific site, e.g. 'linkedin.com'")
     p.add_argument("--proxy", default=None,
-                  help="proxy URL for outbound requests (overrides OSSINT_PROXY env var)")
+                  help="proxy URL for outbound requests (overrides OSINT_PROXY env var)")
     p.add_argument("--output", default=None,
                   help="output file path prefix (default: 'report_<identifier-type>')")
     p.add_argument("--no-cache", action="store_true",
-                  help="bypass the result cache for this run (same as OSSINT_NO_CACHE=1)")
+                  help="bypass the result cache for this run (same as OSINT_NO_CACHE=1)")
     p.add_argument("-v", "--verbose", action="store_true", help="enable debug logging")
     return p.parse_args(argv)
 
@@ -85,7 +85,7 @@ def main(argv: list | None = None) -> int:
                         format="%(asctime)s %(levelname)s %(message)s")
 
     if args.no_cache:
-        os.environ["OSSINT_NO_CACHE"] = "1"
+        os.environ["OSINT_NO_CACHE"] = "1"
 
     try:
         ident = coerce(" ".join(args.identifier), args.type)

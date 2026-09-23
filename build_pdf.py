@@ -1,19 +1,19 @@
-"""python build_pdf.py -> OSSINT_Blueprint.pdf (blueprint + all source files)"""
+"""python build_pdf.py -> OSINT_Blueprint.pdf (blueprint + all source files)"""
 from pathlib import Path
 
 from fpdf import FPDF
 
-CORE = ["ossint/models.py", "ossint/normalizers.py", "ossint/graph.py",
-        "ossint/confidence.py", "ossint/reporting.py", "ossint/orchestrator.py",
-        "ossint/__main__.py"]
-SRC = ["ossint/sources/base.py", "ossint/sources/native.py",
-       "ossint/sources/wrappers.py", "ossint/sources/dorks.py",
-       "ossint/sources/telegram_phone.py", "ossint/sources/breaches.py"]
+CORE = ["osint/models.py", "osint/normalizers.py", "osint/graph.py",
+    "osint/confidence.py", "osint/reporting.py", "osint/orchestrator.py",
+    "osint/__main__.py"]
+SRC = ["osint/sources/base.py", "osint/sources/native.py",
+       "osint/sources/wrappers.py", "osint/sources/dorks.py",
+       "osint/sources/telegram_phone.py", "osint/sources/breaches.py"]
 WEB = ["run_web.py", "webapp/server.py", "webapp/store.py", "webapp/pdf_export.py",
        "webapp/templates/index.html", "webapp/templates/report.html",
        "webapp/templates/history.html", "webapp/static/style.css"]
 
-BLUEPRINT = """OSSINT PRODUCT BLUEPRINT
+BLUEPRINT = """OSINT PRODUCT BLUEPRINT
 ========================
 
 PIPELINE: identifier -> normalize -> parallel source queries -> correlation graph -> confidence -> report
@@ -33,7 +33,7 @@ BREACHES: HIBP v3 via hibp-api-key (free at haveibeenpwned.com). 200 = breaches 
 WEB APP (FastAPI + Jinja2)
   python run_web.py          -> http://127.0.0.1:8000  (opens browser automatically)
   POST /search               -> runs the pipeline, saves report, redirects to result page
-                               (optional proxy field, or OSSINT_PROXY env var)
+                               (optional proxy field, or OSINT_PROXY env var)
   GET  /history              -> every saved search (open / pdf / gml links)
   GET  /report/{id}          -> results page (identifiers, findings, confidence, pivots)
   GET  /report/{id}/pdf      -> server-generated PDF download
@@ -41,7 +41,7 @@ WEB APP (FastAPI + Jinja2)
   Browser Print / Save-as-PDF -> printable layout via print CSS
   Reports persist as JSON+GML under reports/ (recent on home page, full history page).
 
-PROXY: per-request field on the search form, or OSSINT_PROXY=http://user:pass@host:port
+PROXY: per-request field on the search form, or OSINT_PROXY=http://user:pass@host:port
 environment variable. Applies to every httpx-backed live source via the shared client.
 Subprocess-only sources (maigret, socialscan) bypass it; run those over a system/WSL proxy.
 
@@ -61,13 +61,13 @@ USAGE
   pipx install maigret                 # optional username sweep (3000+ sites)
   set HIBP_API_KEY=...                 # optional breach module
   set SERPER_API_KEY=...               # optional search x-ray
-  set OSSINT_PROXY=http://user:pass@host:port   # optional proxy for live lookups
+    set OSINT_PROXY=http://user:pass@host:port   # optional proxy for live lookups
   python run_web.py                    # start the web app
-  python -m ossint "john.doe@gmail.com"  # or CLI mode
+    python -m osint "john.doe@gmail.com"  # or CLI mode
   python build_pdf.py                  # regenerate this document
 """
 
-HEADER = "OSSINT Blueprint - privileged/internal"
+HEADER = "OSINT Blueprint - privileged/internal"
 
 
 class Doc(FPDF):
@@ -92,7 +92,7 @@ def main() -> None:
     pdf.set_auto_page_break(True, margin=15)
     pdf.add_page()
     pdf.set_font("Helvetica", "B", 16)
-    pdf.cell(0, 10, "OSSINT Blueprint", new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(0, 10, "OSINT Blueprint", new_x="LMARGIN", new_y="NEXT")
     pdf.ln(2)
     code_block(pdf, BLUEPRINT)
 
@@ -106,8 +106,8 @@ def main() -> None:
         pdf.ln(1)
         code_block(pdf, p.read_text(encoding="utf-8"))
 
-    pdf.output("OSSINT_Blueprint.pdf")
-    print("[+] wrote OSSINT_Blueprint.pdf")
+    pdf.output("OSINT_Blueprint.pdf")
+    print("[+] wrote OSINT_Blueprint.pdf")
 
 
 if __name__ == "__main__":
